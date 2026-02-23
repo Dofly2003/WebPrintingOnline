@@ -2,57 +2,68 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Cloud Print Service</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Printing Service</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
 
-  <div class="container">
-    <div class="card">
-      <h1>🖨 Cloud Printing Service</h1>
+<body class="bg-gradient-to-br from-slate-900 to-slate-800 min-h-screen flex items-center justify-center p-4">
 
-      <form id="printForm">
-        <div class="form-group">
-          <label>Upload File (PDF)</label>
-          <input type="file" name="file" required />
-        </div>
+  <div class="bg-slate-800 shadow-2xl rounded-2xl w-full max-w-md p-6 sm:p-8">
 
-        <div class="grid">
-          <div class="form-group">
-            <label>Ukuran Kertas</label>
-            <select name="paperSize">
-              <option value="A4">A4</option>
-              <option value="F4">F4</option>
-              <option value="Letter">Letter</option>
-            </select>
-          </div>
+    <h1 class="text-white text-xl sm:text-2xl font-bold text-center mb-6">
+      🖨️ Cloud Printing Service
+    </h1>
 
-          <div class="form-group">
-            <label>Mode Cetak</label>
-            <select name="colorMode">
-              <option value="color">Warna</option>
-              <option value="bw">Hitam Putih</option>
-            </select>
-          </div>
-        </div>
+    <form id="printForm" class="space-y-4">
 
-        <div class="form-group">
-          <label>Jumlah Copy</label>
-          <input type="number" name="copies" value="1" min="1" />
-        </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-2">Upload File (PDF)</label>
+        <input type="file" name="file" required
+          class="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4
+          file:rounded-lg file:border-0
+          file:text-sm file:font-semibold
+          file:bg-blue-600 file:text-white
+          hover:file:bg-blue-700
+          bg-slate-700 rounded-lg p-2"/>
+      </div>
 
-        <div class="form-group">
-          <label>Catatan</label>
-          <textarea name="note"></textarea>
-        </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-2">Ukuran Kertas</label>
+        <select name="paperSize"
+          class="w-full bg-slate-700 text-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="A4">A4</option>
+          <option value="Letter">Letter</option>
+        </select>
+      </div>
 
-        <button type="submit">Upload & Print</button>
-      </form>
+      <div>
+        <label class="block text-sm text-gray-300 mb-2">Mode Cetak</label>
+        <select name="colorMode"
+          class="w-full bg-slate-700 text-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="color">Warna</option>
+          <option value="bw">Hitam Putih</option>
+        </select>
+      </div>
 
-      <div id="status"></div>
-    </div>
+      <div>
+        <label class="block text-sm text-gray-300 mb-2">Jumlah Copy</label>
+        <input type="number" name="copies" value="1" min="1"
+          class="w-full bg-slate-700 text-white p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"/>
+      </div>
+
+      <button type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700 transition duration-300 text-white py-3 rounded-lg font-semibold">
+        Upload & Print
+      </button>
+
+    </form>
+
+    <div id="status" class="mt-4 text-center text-sm"></div>
+
   </div>
 
-<script src="js/main.js"></script>
+<script src="/js/main.js"></script>
 </body>
 </html>

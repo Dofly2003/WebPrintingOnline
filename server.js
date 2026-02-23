@@ -7,11 +7,12 @@ const cors = require("cors");
 
 const app = express();
 const PORT = 3000;
+let printQueue = [];
+
 
 /* ===============================
    MIDDLEWARE
 ================================= */
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -82,71 +83,107 @@ app.use((req, res, next) => {
 
 // Upload file
 app.post("/upload", upload.single("file"), (req, res) => {
-  console.log("FILE:", req.file);
-  console.log("BODY:", req.body);
+  try {
+    console.log("REQ FILE:", req.file);
+    console.log("REQ BODY:", req.body);
 
-  if (!req.file) {
-    return res.status(400).json({ error: "File tidak diterima" });
+    if (!req.file) {
+      return res.json({
+        status: "error",
+        message: "File tidak diterima server"
+      });
+    }
+
+    const newJob = {
+      id: Date.now(),
+      file: req.file.filename,
+      copies: parseInt(req.body.copies) || 1,
+      status: "pending"
+    };
+
+    printQueue.push(newJob);
+
+    console.log("📥 Job masuk:", newJob);
+
+    // 🔥 PASTIKAN RESPONSE INI
+    return res.json({
+      status: "success",
+      message: "Upload berhasil",
+      job: newJob
+    });
+
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+    return res.json({
+      status: "error",
+      message: err.message
+    });
   }
-
-  const newJob = {
-    id: uuidv4(),
-    file: req.file.filename,
-    paperSize: req.body.paperSize || "A4",
-    colorMode: req.body.colorMode || "color",
-    copies: req.body.copies || 1,
-    note: req.body.note || "",
-    status: "pending",
-    createdAt: new Date()
-  };
-
-  db.push(newJob);
-  saveDB();
-
-  console.log("Job masuk:", newJob);
-
-  res.json({
-    message: "File berhasil diupload",
-    job: newJob
-  });
 });
 
 // Ambil job untuk listener
 app.get("/get-print-job", (req, res) => {
-  loadDB();
+  try {
+    console.log("Listener meminta job...");
 
-  const job = db.find(j => j.status === "pending");
+    if (!printQueue || printQueue.length === 0) {
+      return res.json({ status: "empty" });
+    }
 
-  if (!job) {
-    return res.json({ status: "empty" });
+    const job = printQueue.find(j => j.status === "pending");
+
+    if (!job) {
+      return res.json({ status: "empty" });
+    }
+
+    job.status = "printing";
+
+    console.log("🖨️ Kirim job:", job);
+
+    return res.json({
+      status: "success",
+      id: job.id,
+      file: `http://127.0.0.1:3000/uploads/${job.file}`,
+      copies: job.copies || 1
+    });
+
+  } catch (err) {
+    console.error("❌ ERROR get-print-job:", err);
+    return res.status(500).json({
+      status: "error",
+      message: err.message
+    });
   }
-
-  job.status = "printing";
-  saveDB();
-
-  res.json({
-    status: "success",
-    id: job.id,
-    file: `http://localhost:${PORT}/uploads/${job.file}`,
-    copies: job.copies,
-    colorMode: job.colorMode,
-    paperSize: job.paperSize
-  });
 });
 
 // Update status setelah print
 app.post("/update-status", (req, res) => {
-  const { id } = req.body;
+  try {
+    const { id, status } = req.body;
 
-  const job = db.find(j => j.id === id);
+    if (!id) {
+      return res.status(400).json({ status: "error", message: "ID kosong" });
+    }
 
-  if (job) {
-    job.status = "printed";
-    saveDB();
-    console.log("Job selesai:", id);
+    const job = printQueue.find(j => j.id == id);
+
+    if (!job) {
+      return res.json({ status: "not_found" });
+    }
+
+    job.status = status;
+
+    console.log(`✅ Job ${id} jadi ${status}`);
+
+    return res.json({ status: "updated" });
+
+  } catch (err) {
+    console.error("❌ ERROR update-status:", err);
+    return res.status(500).json({
+      status: "error",
+      message: err.message
+    });
   }
-
-  res.json({ message: "Status updated" });
 });
 
 // Serve uploaded files
@@ -156,6 +193,6 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
    START SERVER
 ================================= */
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(3000, "0.0.0.0", () => {
+  console.log("Server running on port 3000");
 });

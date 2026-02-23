@@ -1,80 +1,74 @@
 const axios = require("axios");
-const fs = require("fs-extra");
+const { exec } = require("child_process");
 const path = require("path");
-const { print } = require("pdf-to-printer");
+const fs = require("fs");
 
-const SERVER = "http://localhost:3000";
-const TEMP_DIR = path.join(__dirname, "temp");
-const CHECK_INTERVAL = 5000; // 5 detik
-
-// Pastikan folder temp ada
-fs.ensureDirSync(TEMP_DIR);
-
-console.log("🖨 Print Listener Running...");
-console.log("Terhubung ke:", SERVER);
-
-async function downloadFile(url, outputPath) {
-  const writer = fs.createWriteStream(outputPath);
-
-  const response = await axios({
-    url,
-    method: "GET",
-    responseType: "stream",
-  });
-
-  response.data.pipe(writer);
-
-  return new Promise((resolve, reject) => {
-    writer.on("finish", resolve);
-    writer.on("error", reject);
-  });
-}
+const SERVER_URL = "http://127.0.0.1:3000";
+const CHECK_INTERVAL = 5000; // cek setiap 5 detik
 
 async function checkPrintJob() {
   try {
-    console.log("🔎 Checking job...");
+    const res = await axios.get(`${SERVER_URL}/get-print-job`);
 
-    const res = await axios.get(`${SERVER}/get-print-job`);
-
-    if (res.data.status !== "success") {
-      console.log("📭 Tidak ada job");
+    if (res.data.status === "empty") {
       return;
     }
 
-    const { id, file, copies, colorMode } = res.data;
+    if (res.data.status === "success") {
+      const job = res.data;
 
-    console.log("📥 Job ditemukan:", id);
+      console.log("📥 JOB DITERIMA:", job);
 
-    const filePath = path.join(TEMP_DIR, `${id}.pdf`);
+      const fileUrl = job.file;
+      const fileName = path.basename(fileUrl);
+      const downloadPath = path.join(__dirname, "downloads");
 
-    console.log("⬇ Downloading file...");
-    await downloadFile(file, filePath);
+      if (!fs.existsSync(downloadPath)) {
+        fs.mkdirSync(downloadPath);
+      }
 
-    console.log("🖨 Printing...");
+      const filePath = path.join(downloadPath, fileName);
 
-    await print(filePath, {
-      copies: parseInt(copies) || 1,
-      printDialog: false,
-      win32: [
-        "-print-settings",
-        colorMode === "bw" ? "monochrome" : "color"
-      ]
-    });
+      // DOWNLOAD FILE
+      const writer = fs.createWriteStream(filePath);
+      const response = await axios({
+        url: fileUrl,
+        method: "GET",
+        responseType: "stream"
+      });
 
-    console.log("✅ Print berhasil!");
+      response.data.pipe(writer);
 
-    await axios.post(`${SERVER}/update-status`, {
-      id: id,
-    });
+      writer.on("finish", () => {
+        console.log("📂 FILE SIAP PRINT:", filePath);
 
-    console.log("🔄 Status updated");
+        // PRINT FILE
+        const printCommand = `lp -n ${job.copies} "${filePath}"`;
 
-    await fs.remove(filePath);
-    console.log("🗑 File temp dihapus");
+        exec(printCommand, async (error, stdout, stderr) => {
+          if (error) {
+            console.error("❌ PRINT ERROR:", error.message);
+            return;
+          }
 
-  } catch (error) {
-    console.log("❌ Listener error:", error.message);
+          console.log("🖨️ PRINT SUCCESS:", stdout);
+
+          // UPDATE STATUS KE SERVER
+          await axios.post(`${SERVER_URL}/update-status`, {
+            id: job.id,
+            status: "printed"
+          });
+
+          console.log("✅ STATUS UPDATED");
+        });
+      });
+    }
+  } catch (err) {
+    console.error("❌ LISTENER ERROR:", err.message);
   }
 }
 
+// Loop terus
 setInterval(checkPrintJob, CHECK_INTERVAL);
+
+console.log("🖨️ Print Listener aktif...");
